@@ -1,0 +1,6 @@
+StudentID,Name,Email,Class,StudyHours,Attendance,AssignmentCompletion,OnlineCourses,Discussions,Extracurricular,Resources,Internet,EduTech,Gender,Age,LearningStyle,Motivation,StressLevel
+SV001,Nguyen Van A,nguyenvana@student.educare.edu.vn,CS101-A,12,65,58,5,0,1,1,1,1,0,20,2,1,2
+SV002,Tran Thi B,,CS101-A,25,92,88,15,1,1,2,1,1,1,21,1,2,0
+SV003,Le Van C,,CS101-A,8,55,45,2,0,0,0,0,0,0,22,3,0,2
+SV004,Pham Thi D,phamthid@student.educare.edu.vn,CS101-A,18,78,72,10,1,1,1,1,1,1,19,2,1,1
+SV005,Hoang Van E,,CS101-A,22,88,95,12,1,1,2,1,1,0,23,0,2,1

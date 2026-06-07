@@ -1,0 +1,11 @@
+{
+  "source": "student_performance.csv via data/model.py — pre-encoded int64, no LabelEncoder saved",
+  "Gender": { "Male": 0, "Female": 1 },
+  "Extracurricular": { "No": 0, "Yes": 1 },
+  "Internet": { "No": 0, "Yes": 1 },
+  "EduTech": { "No": 0, "Yes": 1 },
+  "Resources": { "Low": 0, "Medium": 1, "High": 2 },
+  "LearningStyle": { "Visual": 0, "Auditory": 1, "Reading/Writing": 2, "Kinesthetic": 3 },
+  "Motivation": { "Low": 0, "Medium": 1, "High": 2 },
+  "StressLevel": { "Low": 0, "Medium": 1, "High": 2 }
+}
