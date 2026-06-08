@@ -1,5 +1,9 @@
 import { CATEGORICAL_FIELDS, getValidLabels } from '../config/featureEncoding.js';
-import { UPLOAD_COLUMNS } from '../utils/featureColumns.js';
+import {
+  UPLOAD_COLUMNS,
+  ROSTER_REQUIRED_COLUMNS,
+  EXTERNAL_PROFILE_COLUMNS,
+} from '../utils/featureColumns.js';
 import { normalizeCategorical } from '../utils/featureMapper.js';
 
 const NUMERIC_FIELDS = {
@@ -11,14 +15,16 @@ const NUMERIC_FIELDS = {
   Age: { min: 15, max: 80, label: 'Age' },
 };
 
+const EXTERNAL_CATEGORICAL = ['Gender', 'Internet', 'Extracurricular', 'StressLevel'];
+
 function addError(errors, row, field, message) {
   errors.push({ row, field, message });
 }
 
-function validateNumericField(errors, rowNum, field, rawValue) {
+function validateNumericField(errors, rowNum, field, rawValue, required = true) {
   const rule = NUMERIC_FIELDS[field];
   if (rawValue === '' || rawValue === null || rawValue === undefined) {
-    addError(errors, rowNum, field, `${field} is required.`);
+    if (required) addError(errors, rowNum, field, `${field} is required.`);
     return;
   }
 
@@ -45,9 +51,9 @@ function validateNumericField(errors, rowNum, field, rawValue) {
   }
 }
 
-function validateCategoricalField(errors, rowNum, field, rawValue) {
+function validateCategoricalField(errors, rowNum, field, rawValue, required = true) {
   if (rawValue === '' || rawValue === null || rawValue === undefined) {
-    addError(errors, rowNum, field, `${field} is required.`);
+    if (required) addError(errors, rowNum, field, `${field} is required.`);
     return;
   }
 
@@ -87,74 +93,48 @@ function validateDuplicateEmails(validRows, errors) {
   });
 }
 
-/**
- * Validate upload rows; returns structured errors per row/field.
- */
-export function validateUploadRows(rows, normalizeRowFn) {
-  if (!rows.length) {
-    return {
-      valid: false,
-      errors: [{ row: 0, field: 'File', message: 'File has no data rows.' }],
-      validRows: [],
-      preview: [],
-    };
+function validateIdentityFields(errors, row, rowNum) {
+  if (!row.StudentID?.toString().trim()) {
+    addError(errors, rowNum, 'StudentID', 'StudentID is required.');
+  }
+  if (!row.Name?.toString().trim()) {
+    addError(errors, rowNum, 'Name', 'Name is required.');
+  }
+  if (!row.Class?.toString().trim()) {
+    addError(errors, rowNum, 'Class', 'Class is required.');
+  }
+  validateEmail(errors, rowNum, row.Email ?? row.email);
+}
+
+function buildPreview(validRows, mode) {
+  if (mode === 'external') {
+    return validRows.slice(0, 10).map((r) => ({
+      StudentID: r.studentCode,
+      Gender: r.external.Gender,
+      Age: r.external.Age,
+      Attendance: r.external.Attendance,
+      Internet: r.external.Internet,
+      Extracurricular: r.external.Extracurricular,
+      StressLevel: r.external.StressLevel,
+    }));
   }
 
-  const headers = Object.keys(rows[0]).map((h) => h.trim());
-  const missing = UPLOAD_COLUMNS.filter((col) => !headers.includes(col));
-
-  if (missing.length) {
-    return {
-      valid: false,
-      errors: missing.map((col) => ({
-        row: 1,
-        field: col,
-        message: `Missing required column: ${col}.`,
-      })),
-      validRows: [],
-      preview: [],
-    };
+  if (mode === 'roster') {
+    return validRows.slice(0, 10).map((r) => ({
+      StudentID: r.studentCode,
+      Name: r.fullName,
+      Email: r.email || '',
+      Class: r.classLabel,
+      Gender: r.rawFeatures.gender,
+      Age: r.rawFeatures.age,
+      Attendance: r.rawFeatures.attendance,
+      Internet: r.rawFeatures.internet,
+      Extracurricular: r.rawFeatures.extracurricular,
+      StressLevel: r.rawFeatures.stressLevel,
+    }));
   }
 
-  const errors = [];
-  const validRows = [];
-
-  rows.forEach((row, index) => {
-    const rowNum = index + 2; // header is row 1
-
-    if (!row.StudentID?.toString().trim()) {
-      addError(errors, rowNum, 'StudentID', 'StudentID is required.');
-    }
-    if (!row.Name?.toString().trim()) {
-      addError(errors, rowNum, 'Name', 'Name is required.');
-    }
-    if (!row.Class?.toString().trim()) {
-      addError(errors, rowNum, 'Class', 'Class is required.');
-    }
-
-    validateEmail(errors, rowNum, row.Email ?? row.email);
-
-    for (const field of Object.keys(NUMERIC_FIELDS)) {
-      validateNumericField(errors, rowNum, field, row[field]);
-    }
-
-    for (const field of CATEGORICAL_FIELDS) {
-      validateCategoricalField(errors, rowNum, field, row[field]);
-    }
-  });
-
-  if (errors.length === 0) {
-    rows.forEach((row) => {
-      validRows.push(normalizeRowFn(row));
-    });
-    validateDuplicateEmails(validRows, errors);
-  }
-
-  if (errors.length > 0) {
-    validRows.length = 0;
-  }
-
-  const preview = validRows.slice(0, 10).map((r) => ({
+  return validRows.slice(0, 10).map((r) => ({
     StudentID: r.studentCode,
     Name: r.fullName,
     Email: r.email || '',
@@ -174,11 +154,149 @@ export function validateUploadRows(rows, normalizeRowFn) {
     Motivation: r.rawFeatures.motivation,
     StressLevel: r.rawFeatures.stressLevel,
   }));
+}
+
+/**
+ * Validate upload rows; mode: full | roster | external
+ */
+export function validateUploadRows(rows, normalizeRowFn, options = {}) {
+  const mode = options.mode || 'full';
+
+  if (!rows.length) {
+    return {
+      valid: false,
+      errors: [{ row: 0, field: 'File', message: 'File has no data rows.' }],
+      validRows: [],
+      preview: [],
+      mode,
+    };
+  }
+
+  const headers = Object.keys(rows[0]).map((h) => h.trim());
+
+  if (mode === 'full') {
+    const missing = UPLOAD_COLUMNS.filter((col) => !headers.includes(col));
+    if (missing.length) {
+      return {
+        valid: false,
+        errors: missing.map((col) => ({
+          row: 1,
+          field: col,
+          message: `Missing required column: ${col}.`,
+        })),
+        validRows: [],
+        preview: [],
+        mode,
+      };
+    }
+  }
+
+  if (mode === 'roster') {
+    const missing = ROSTER_REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
+    if (missing.length) {
+      return {
+        valid: false,
+        errors: missing.map((col) => ({
+          row: 1,
+          field: col,
+          message: `Missing required column: ${col}.`,
+        })),
+        validRows: [],
+        preview: [],
+        mode,
+      };
+    }
+  }
+
+  if (mode === 'external') {
+    const missing = ['StudentID', ...EXTERNAL_PROFILE_COLUMNS].filter((col) => !headers.includes(col));
+    if (missing.length) {
+      return {
+        valid: false,
+        errors: missing.map((col) => ({
+          row: 1,
+          field: col,
+          message: `Missing required column: ${col}.`,
+        })),
+        validRows: [],
+        preview: [],
+        mode,
+      };
+    }
+  }
+
+  const errors = [];
+  const validRows = [];
+
+  rows.forEach((row, index) => {
+    const rowNum = index + 2;
+
+    if (mode === 'external') {
+      if (!row.StudentID?.toString().trim()) {
+        addError(errors, rowNum, 'StudentID', 'StudentID is required.');
+      }
+      validateNumericField(errors, rowNum, 'Age', row.Age, true);
+      validateNumericField(errors, rowNum, 'Attendance', row.Attendance, true);
+      for (const field of EXTERNAL_CATEGORICAL) {
+        validateCategoricalField(errors, rowNum, field, row[field], true);
+      }
+      return;
+    }
+
+    validateIdentityFields(errors, row, rowNum);
+
+    if (mode === 'full') {
+      for (const field of Object.keys(NUMERIC_FIELDS)) {
+        validateNumericField(errors, rowNum, field, row[field], true);
+      }
+      for (const field of CATEGORICAL_FIELDS) {
+        validateCategoricalField(errors, rowNum, field, row[field], true);
+      }
+    }
+
+    if (mode === 'roster') {
+      if (options.selectedClassName) {
+        const excelClass = row.Class?.toString().trim();
+        const expected = options.selectedClassName.trim();
+        if (excelClass && excelClass.toLowerCase() !== expected.toLowerCase()) {
+          addError(
+            errors,
+            rowNum,
+            'Class',
+            `Cột Class "${excelClass}" phải trùng lớp đã chọn trên form ("${expected}").`
+          );
+        }
+      }
+      for (const field of EXTERNAL_PROFILE_COLUMNS) {
+        if (row[field] !== '' && row[field] != null && row[field] !== undefined) {
+          if (field === 'Age' || field === 'Attendance') {
+            validateNumericField(errors, rowNum, field, row[field], true);
+          } else {
+            validateCategoricalField(errors, rowNum, field, row[field], true);
+          }
+        }
+      }
+    }
+  });
+
+  if (errors.length === 0) {
+    rows.forEach((row) => {
+      validRows.push(normalizeRowFn(row));
+    });
+    if (mode !== 'external') {
+      validateDuplicateEmails(validRows, errors);
+    }
+  }
+
+  if (errors.length > 0) {
+    validRows.length = 0;
+  }
 
   return {
     valid: errors.length === 0,
     errors,
     validRows,
-    preview,
+    preview: buildPreview(validRows, mode),
+    mode,
   };
 }

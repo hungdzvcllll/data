@@ -17,30 +17,39 @@ export default function StudentRiskListPage() {
   const [loading, setLoading] = useState(true);
   const [risk, setRisk] = useState('All');
   const [filter, setFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [classId, setClassId] = useState(searchParams.get('classId') || '');
-
-  const load = () => {
-    setLoading(true);
-    getRiskStudents({
-      classId: classId || undefined,
-      risk: risk === 'All' ? undefined : risk,
-      filter: filter || undefined,
-      search: search || undefined,
-    })
-      .then((res) => setStudents(res.data.students || []))
-      .finally(() => setLoading(false));
-  };
 
   useEffect(() => {
     getClasses().then((res) => setClasses(res.data.classes || []));
   }, []);
 
-  useEffect(load, [classId, risk, filter]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    getRiskStudents({
+      classId: classId || undefined,
+      risk: risk === 'All' ? undefined : risk,
+      filter: filter || undefined,
+      search: appliedSearch || undefined,
+    })
+      .then((res) => {
+        if (!cancelled) setStudents(res.data.students || []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, risk, filter, appliedSearch]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    load();
+    setAppliedSearch(searchInput.trim());
   };
 
   return (
@@ -70,8 +79,8 @@ export default function StudentRiskListPage() {
         </select>
         <form onSubmit={handleSearch} className="flex gap-2">
           <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Tìm StudentID, tên, lớp..."
             className="rounded-lg border px-3 py-2 text-sm"
           />
@@ -89,7 +98,7 @@ export default function StudentRiskListPage() {
                 <th className="px-4 py-3">StudentID</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Class</th>
-                <th className="px-4 py-3">Predicted Score</th>
+                <th className="px-4 py-3">Điểm dự đoán (10)</th>
                 <th className="px-4 py-3">Risk Level</th>
                 <th className="px-4 py-3">Main Risk Factors</th>
                 <th className="px-4 py-3">Last Updated</th>

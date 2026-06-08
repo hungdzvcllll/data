@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import StatCard from '../components/StatCard';
 import { getTeacherDashboard, getClasses, getClassDashboard } from '../services/api';
-import { formatScore } from '../utils/constants';
+import { formatScore, toDisplayScore } from '../utils/constants';
 
 const RISK_COLORS = {
   EXCELLENT: '#10b981',
@@ -20,14 +20,26 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    getClasses().then((res) => setClasses(res.data.classes || []));
-    loadDashboard();
+    loadInitial();
   }, []);
+
+  const loadInitial = async () => {
+    setLoadError('');
+    try {
+      const res = await getClasses();
+      setClasses(res.data.classes || []);
+    } catch (err) {
+      console.error(err);
+    }
+    await loadDashboard();
+  };
 
   const loadDashboard = async (classId) => {
     setLoading(true);
+    setLoadError('');
     try {
       if (classId) {
         const res = await getClassDashboard(classId);
@@ -40,6 +52,7 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error(err);
+      setLoadError('Không kết nối được API. Hãy đảm bảo backend đang chạy (port 5000), rồi thử lại.');
     } finally {
       setLoading(false);
     }
@@ -51,6 +64,21 @@ export default function DashboardPage() {
     loadDashboard(val || undefined);
   };
 
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+        <p>{loadError}</p>
+        <button
+          type="button"
+          onClick={loadInitial}
+          className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
   if (loading || !data) {
     return <p className="text-slate-500">Đang tải dashboard...</p>;
   }
@@ -61,10 +89,10 @@ export default function DashboardPage() {
   }));
 
   const scoreBuckets = [
-    { range: '40-54', count: 0 },
-    { range: '55-69', count: 0 },
-    { range: '70-84', count: 0 },
-    { range: '85-100', count: 0 },
+    { range: '4–5.4', count: 0 },
+    { range: '5.5–6.9', count: 0 },
+    { range: '7–8.4', count: 0 },
+    { range: '8.5–10', count: 0 },
   ];
   (data.scoreDistribution || []).forEach(({ predictedScore }) => {
     const s = predictedScore;
@@ -73,6 +101,11 @@ export default function DashboardPage() {
     else if (s < 85) scoreBuckets[2].count += 1;
     else scoreBuckets[3].count += 1;
   });
+
+  const scatterDisplay = scatter.map((point) => ({
+    ...point,
+    predictedScore: toDisplayScore(point.predictedScore),
+  }));
 
   return (
     <div className="space-y-6">
@@ -96,7 +129,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Tổng sinh viên" value={data.totalStudents} />
         <StatCard
-          title="Điểm TB dự đoán"
+          title="Điểm TB dự đoán (thang 10)"
           value={formatScore(data.averagePredictedScore || 0)}
           accent="border-l-blue-500"
         />
@@ -106,7 +139,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border bg-white p-5 shadow-sm">
-          <h3 className="mb-4 font-semibold">Phân bố điểm dự đoán</h3>
+          <h3 className="mb-4 font-semibold">Phân bố điểm dự đoán (thang 10)</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={scoreBuckets}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -147,9 +180,9 @@ export default function DashboardPage() {
                 <ScatterChart>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" dataKey={chart.xKey} name={chart.xKey} />
-                  <YAxis type="number" dataKey="predictedScore" name="Score" domain={[40, 100]} />
+                  <YAxis type="number" dataKey="predictedScore" name="Điểm" domain={[4, 10]} />
                   <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                  <Scatter data={scatter} fill={chart.color} />
+                  <Scatter data={scatterDisplay} fill={chart.color} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>

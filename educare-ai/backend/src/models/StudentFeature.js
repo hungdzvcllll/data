@@ -57,6 +57,8 @@ const studentFeatureSchema = new mongoose.Schema(
     stressLevel: { type: Number, required: true },
     rawFeatures: rawFeaturesSchema,
     encodedFeatures: encodedFeaturesSchema,
+    /** ML feature keys manually set by teacher — skip LMS behavior merge on repredict. */
+    manualOverrideKeys: { type: [String], default: [] },
     recordedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

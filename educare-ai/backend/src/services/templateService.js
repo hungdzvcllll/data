@@ -129,3 +129,77 @@ export async function generateUploadTemplateBuffer() {
 
   return workbook.xlsx.writeBuffer();
 }
+
+const ROSTER_COLUMNS = [
+  'StudentID', 'Name', 'Email', 'Class',
+  'Gender', 'Age', 'Attendance', 'Internet', 'Extracurricular', 'StressLevel',
+];
+const ROSTER_SAMPLE = [
+  ['SV001', 'Nguyen Van A', 'nguyenvana@example.com', 'CS101-A', 'Male', 20, 85, 'Yes', 'Yes', 'Medium'],
+  ['SV002', 'Tran Thi B', '', 'CS101-A', 'Female', 21, 72, 'Yes', 'No', 'High'],
+];
+
+const ROSTER_GUIDE = [
+  ['Column', 'Meaning', 'Notes'],
+  ['StudentID', 'Mã sinh viên', 'Bắt buộc'],
+  ['Name', 'Họ và tên', 'Bắt buộc'],
+  ['Email', 'Email đăng nhập portal', 'Tùy chọn'],
+  ['Class', 'Mã lớp', 'Bắt buộc'],
+  ['Gender', 'Giới tính (ngoài LMS)', 'Tùy chọn — để trống dùng mặc định'],
+  ['Age', 'Tuổi', 'Tùy chọn'],
+  ['Attendance', 'Chuyên cần %', 'Tùy chọn'],
+  ['Internet', 'Có Internet', 'Yes / No — tùy chọn'],
+  ['Extracurricular', 'Hoạt động ngoại khóa', 'Yes / No — tùy chọn'],
+  ['StressLevel', 'Mức căng thẳng', 'Low / Medium / High — tùy chọn'],
+  ['—', '8 trường hành vi LMS', 'Tự thu khi sinh viên học trên hệ thống (không cần nhập Excel)'],
+];
+
+export async function generateRosterTemplateBuffer() {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'EduCare AI';
+
+  const listsSheet = workbook.addWorksheet('_Lists');
+  listsSheet.state = 'veryHidden';
+  const rosterDropdowns = {
+    Gender: 'Gender',
+    Internet: 'Internet',
+    Extracurricular: 'Extracurricular',
+    StressLevel: 'StressLevel',
+  };
+  const listColumnMap = {};
+  let listCol = 1;
+  for (const [field, listKey] of Object.entries(rosterDropdowns)) {
+    const labels = getValidLabels(listKey);
+    labels.forEach((label, rowIdx) => {
+      listsSheet.getCell(rowIdx + 1, listCol).value = label;
+    });
+    const colLetter = listsSheet.getColumn(listCol).letter;
+    listColumnMap[field] = `_Lists!$${colLetter}$1:$${colLetter}$${labels.length}`;
+    listCol += 1;
+  }
+
+  const dataSheet = workbook.addWorksheet('StudentData');
+  dataSheet.addRow(ROSTER_COLUMNS);
+  dataSheet.getRow(1).font = { bold: true };
+  ROSTER_SAMPLE.forEach((row) => dataSheet.addRow(row));
+
+  ROSTER_COLUMNS.forEach((col, idx) => {
+    if (listColumnMap[col]) {
+      applyRangeDropdown(dataSheet, idx + 1, listColumnMap[col]);
+    }
+  });
+
+  dataSheet.columns.forEach((col) => { col.width = 18; });
+
+  const guideSheet = workbook.addWorksheet('Guide');
+  ROSTER_GUIDE.forEach((row) => guideSheet.addRow(row));
+  guideSheet.getRow(1).font = { bold: true };
+  guideSheet.columns.forEach((col) => { col.width = 36; });
+
+  return workbook.xlsx.writeBuffer();
+}
+
+/** @deprecated Use generateRosterTemplateBuffer — same 10-column merged template */
+export async function generateExternalProfileTemplateBuffer() {
+  return generateRosterTemplateBuffer();
+}

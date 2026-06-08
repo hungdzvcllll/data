@@ -3,7 +3,7 @@ import path from 'path';
 import { parse } from 'csv-parse/sync';
 import XLSX from 'xlsx';
 import { validateUploadRows } from './uploadValidationService.js';
-import { mapValidatedRow } from '../utils/featureMapper.js';
+import { mapValidatedRow, mapExternalProfileRow } from '../utils/featureMapper.js';
 
 const STUDENT_DATA_SHEET = 'StudentData';
 
@@ -23,8 +23,16 @@ export function parseUploadFile(filePath) {
   return XLSX.utils.sheet_to_json(sheet, { defval: '' });
 }
 
-export function validateAndMapUploadRows(rows) {
-  const result = validateUploadRows(rows, mapValidatedRow);
+export function validateAndMapUploadRows(rows, mode = 'full', selectedClassName = '') {
+  const result = validateUploadRows(
+    rows,
+    (row) => mapValidatedRow(row, mode === 'external' ? 'full' : mode),
+    { mode, selectedClassName }
+  );
+  if (mode === 'external') {
+    const externalResult = validateUploadRows(rows, mapExternalProfileRow, { mode: 'external' });
+    return externalResult;
+  }
   if (!result.valid) {
     result.validRows = [];
   }

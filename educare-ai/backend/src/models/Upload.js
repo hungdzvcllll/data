@@ -5,6 +5,11 @@ const uploadSchema = new mongoose.Schema(
     classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     fileName: { type: String, required: true },
+    uploadMode: {
+      type: String,
+      enum: ['full', 'roster', 'external'],
+      default: 'full',
+    },
     status: {
       type: String,
       enum: ['PENDING', 'VALIDATED', 'IMPORTED', 'FAILED'],

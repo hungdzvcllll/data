@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { createIntervention, getStudent, getStudentInterventions } from '../services/api';
+import { repredictWithBehavior } from '../services/learningBehaviorService';
 import RiskBadge from '../components/RiskBadge';
+import LearningBehaviorSummary from '../components/LearningBehaviorSummary';
 import { formatDate, formatScore } from '../utils/constants';
-import { displayFeatureValue } from '../utils/featureDisplay';
+import { displayFeatureSourceValue, ML_FEATURE_KEYS } from '../utils/featureDisplay';
 
 export default function StudentDetailPage() {
   const { id } = useParams();
@@ -16,6 +18,7 @@ export default function StudentDetailPage() {
     followUpDate: '',
   });
   const [saving, setSaving] = useState(false);
+  const [repredicting, setRepredicting] = useState(false);
 
   const load = () => {
     getStudent(id).then((res) => setData(res.data));
@@ -23,6 +26,18 @@ export default function StudentDetailPage() {
   };
 
   useEffect(load, [id]);
+
+  const handleRepredict = async (payload) => {
+    setRepredicting(true);
+    try {
+      await repredictWithBehavior(id, payload);
+      load();
+    } catch (err) {
+      setRepredicting(false);
+      throw err;
+    }
+    setRepredicting(false);
+  };
 
   const handleCreateIntervention = async (e) => {
     e.preventDefault();
@@ -43,24 +58,17 @@ export default function StudentDetailPage() {
 
   if (!data) return <p>Đang tải...</p>;
 
-  const { student, latestPrediction, latestFeature, predictionHistory } = data;
+  const { student, latestPrediction, latestFeature, predictionHistory, behaviorSummary, computedFeaturePreview } = data;
 
-  const featureLabels = [
-    'StudyHours',
-    'Attendance',
-    'AssignmentCompletion',
-    'OnlineCourses',
-    'Discussions',
-    'Extracurricular',
-    'Resources',
-    'Internet',
-    'EduTech',
-    'Gender',
-    'Age',
-    'LearningStyle',
-    'Motivation',
-    'StressLevel',
-  ];
+  const featureSource = latestPrediction?.featureSource
+    || computedFeaturePreview?.featureSource
+    || null;
+  const computedFeatures = latestPrediction?.computedFeatures
+    || computedFeaturePreview?.computedFeatures
+    || null;
+  const mergedFeatures = computedFeaturePreview?.mergedFeatures || null;
+
+  const featureLabels = ML_FEATURE_KEYS;
 
   return (
     <div className="space-y-6">
@@ -81,6 +89,18 @@ export default function StudentDetailPage() {
         </div>
       </div>
 
+      <LearningBehaviorSummary
+        behaviorSummary={behaviorSummary}
+        featureSource={featureSource}
+        computedFeatures={computedFeatures}
+        mergedFeatures={mergedFeatures}
+        latestFeature={latestFeature}
+        student={student}
+        latestPredictionId={latestPrediction?._id}
+        onRepredict={latestFeature ? handleRepredict : null}
+        repredicting={repredicting}
+      />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border bg-white p-5 shadow-sm">
           <h3 className="mb-4 font-semibold">14 Features đầu vào</h3>
@@ -88,8 +108,14 @@ export default function StudentDetailPage() {
             {featureLabels.map((label) => (
               <div key={label} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2">
                 <span className="text-slate-500">{label}</span>
-                <span className="font-medium">
-                  {displayFeatureValue(label, latestFeature, student)}
+                <span className="font-medium text-right">
+                  {displayFeatureSourceValue(label, {
+                    featureSource,
+                    mergedFeatures,
+                    computedFeatures,
+                    latestFeature,
+                    student,
+                  })}
                 </span>
               </div>
             ))}

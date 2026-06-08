@@ -4,9 +4,13 @@ import { useAuth } from '../hooks/useAuth';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/classes', label: 'Lớp học' },
+  { to: '/courses', label: 'Khóa học' },
+  { to: '/lectures', label: 'Bài giảng' },
+  { to: '/assignments', label: 'Bài tập' },
   { to: '/upload', label: 'Upload dữ liệu' },
   { to: '/students', label: 'Danh sách rủi ro' },
   { to: '/interventions', label: 'Can thiệp' },
+  { to: '/learning-monitor', label: 'Theo dõi học tập' },
 ];
 
 export default function Layout() {
@@ -20,10 +24,10 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside className="fixed inset-y-0 left-0 w-64 bg-sidebar text-white">
+      <aside className="fixed inset-y-0 left-0 w-64 overflow-y-auto bg-sidebar text-white">
         <div className="border-b border-slate-700 px-6 py-5">
           <h1 className="text-lg font-bold text-emerald-400">EduCare AI</h1>
-          <p className="text-xs text-slate-400">Learning Risk & Intervention</p>
+          <p className="text-xs text-slate-400">LMS & Learning Risk</p>
         </div>
         <nav className="space-y-1 p-4">
           {navItems.map((item) => (
@@ -40,7 +44,7 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="absolute bottom-0 w-full border-t border-slate-700 p-4">
+        <div className="border-t border-slate-700 p-4">
           <p className="truncate text-sm font-medium">{user?.fullName}</p>
           <p className="text-xs text-slate-400">{user?.role}</p>
           <button
@@ -56,7 +60,7 @@ export default function Layout() {
       <main className="ml-64 flex-1">
         <header className="border-b border-slate-200 bg-white px-8 py-4">
           <h2 className="text-xl font-semibold text-slate-800">EduCare AI Platform</h2>
-          <p className="text-sm text-slate-500">Hệ thống cảnh báo sớm & hỗ trợ can thiệp học tập</p>
+          <p className="text-sm text-slate-500">LMS mini & cảnh báo sớm học tập</p>
         </header>
         <div className="p-8">
           <Outlet />

@@ -15,6 +15,8 @@ const predictionSchema = new mongoose.Schema(
     explanations: [{ type: String }],
     recommendedActions: [{ type: String }],
     modelVersion: { type: String, default: 'student_examscore_model.joblib' },
+    computedFeatures: { type: mongoose.Schema.Types.Mixed },
+    featureSource: { type: mongoose.Schema.Types.Mixed },
   },
   { timestamps: true }
 );

@@ -4,6 +4,26 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
+const MAX_RETRIES = 4;
+const RETRY_DELAY_MS = 750;
+
+function isTransientNetworkError(err) {
+  if (err.response) return false;
+  const code = err.code || '';
+  const message = err.message || '';
+  return (
+    code === 'ERR_NETWORK'
+    || code === 'ECONNABORTED'
+    || code === 'ECONNREFUSED'
+    || code === 'ECONNRESET'
+    || message.includes('Network Error')
+  );
+}
+
+function wait(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('educare_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -12,7 +32,18 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    const config = err.config;
+
+    if (config && isTransientNetworkError(err)) {
+      config.__retryCount = config.__retryCount || 0;
+      if (config.__retryCount < MAX_RETRIES) {
+        config.__retryCount += 1;
+        await wait(RETRY_DELAY_MS * config.__retryCount);
+        return api(config);
+      }
+    }
+
     if (err.response?.status === 401) {
       localStorage.removeItem('educare_token');
       localStorage.removeItem('educare_user');

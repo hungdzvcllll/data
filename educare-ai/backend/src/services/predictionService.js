@@ -76,6 +76,14 @@ export async function predictSingle(features) {
 
 export async function predictBatch(items) {
   const records = items.map((item) => {
+    if (item.features && item.features.StudyHours !== undefined) {
+      return {
+        studentCode: item.studentCode ?? item.student?.studentCode,
+        studentId: item.studentId?.toString() ?? item.student?._id?.toString(),
+        features: item.features,
+      };
+    }
+
     const merged = item.featureDoc?.toObject
       ? item.featureDoc.toObject()
       : item.features;

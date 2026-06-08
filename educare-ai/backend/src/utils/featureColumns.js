@@ -1,4 +1,44 @@
-/** Required columns for student data upload (Email optional). */
+/** Identity columns for initial roster import (Email optional in file). */
+export const ROSTER_REQUIRED_COLUMNS = ['StudentID', 'Name', 'Class'];
+
+/**
+ * Profile fields collected outside LMS (survey, attendance system, admin input).
+ * Not derived from student learning actions on the platform.
+ */
+export const EXTERNAL_PROFILE_COLUMNS = [
+  'Gender',
+  'Age',
+  'Attendance',
+  'Internet',
+  'Extracurricular',
+  'StressLevel',
+];
+
+/** Combined roster template: identity + external profile (10 columns). */
+export const ROSTER_TEMPLATE_COLUMNS = [
+  'StudentID',
+  'Name',
+  'Email',
+  'Class',
+  ...EXTERNAL_PROFILE_COLUMNS,
+];
+
+/**
+ * ML features auto-computed from LMS behavior when data exists (8 of 14).
+ * @see behaviorFeatureService.js
+ */
+export const BEHAVIOR_DRIVEN_ML_FEATURES = [
+  'StudyHours',
+  'Resources',
+  'OnlineCourses',
+  'Discussions',
+  'AssignmentCompletion',
+  'EduTech',
+  'Motivation',
+  'LearningStyle',
+];
+
+/** Required columns for full student data upload (Email optional). */
 export const UPLOAD_COLUMNS = [
   'StudentID',
   'Name',

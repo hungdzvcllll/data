@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.post('/single', authorize('ADMIN', 'TEACHER'), predictionController.predictSingle);
 router.post('/batch', authorize('ADMIN', 'TEACHER'), predictionController.predictBatch);
+router.post('/student/:studentId/repredict', authorize('ADMIN', 'TEACHER'), predictionController.repredictStudent);
 router.get('/class/:classId', authorize('ADMIN', 'TEACHER'), predictionController.getClassPredictions);
 router.get('/student/:studentId', authorize('ADMIN', 'TEACHER', 'STUDENT'), predictionController.getStudentPredictions);
 

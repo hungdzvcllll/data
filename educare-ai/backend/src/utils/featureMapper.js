@@ -1,5 +1,6 @@
 import featureEncoding, { CATEGORICAL_FIELDS } from '../config/featureEncoding.js';
 import { ML_FEATURE_KEYS } from './featureColumns.js';
+import { applyUploadDefaults } from './uploadDefaults.js';
 
 /**
  * Normalize categorical text: trim whitespace, case-insensitive match to canonical label.
@@ -79,21 +80,39 @@ export function mapRowToEncodedFeatures(row) {
 /**
  * Full normalized upload row for storage and prediction.
  */
-export function mapValidatedRow(row) {
-  const rawFeatures = buildRawFeatures(row);
-  const encodedFeatures = mapRowToEncodedFeatures(row);
+export function mapValidatedRow(row, mode = 'full') {
+  const normalized = applyUploadDefaults(row, mode);
+  const rawFeatures = buildRawFeatures(normalized);
+  const encodedFeatures = mapRowToEncodedFeatures(normalized);
 
-  const emailRaw = row.Email ?? row.email;
+  const emailRaw = normalized.Email ?? normalized.email;
 
   return {
-    studentCode: String(row.StudentID).trim(),
-    fullName: String(row.Name).trim(),
-    classLabel: String(row.Class || '').trim(),
+    studentCode: String(normalized.StudentID).trim(),
+    fullName: String(normalized.Name).trim(),
+    classLabel: String(normalized.Class || '').trim(),
     gender: encodedFeatures.Gender,
     age: encodedFeatures.Age,
     email: emailRaw ? String(emailRaw).trim().toLowerCase() : null,
     rawFeatures,
     encodedFeatures,
     mlFeatures: encodedFeatures,
+    uploadMode: mode,
+    profileComplete: mode === 'full' || mode === 'external',
+  };
+}
+
+/** Map external profile row — only updates survey/admin fields on existing students. */
+export function mapExternalProfileRow(row) {
+  return {
+    studentCode: String(row.StudentID).trim(),
+    external: {
+      Gender: row.Gender,
+      Age: row.Age,
+      Attendance: row.Attendance,
+      Internet: row.Internet,
+      Extracurricular: row.Extracurricular,
+      StressLevel: row.StressLevel,
+    },
   };
 }

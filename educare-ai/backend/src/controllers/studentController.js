@@ -5,6 +5,12 @@ import StudentFeature from '../models/StudentFeature.js';
 import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
 import { getLatestPrediction, getPredictionHistory } from '../services/studentPredictionService.js';
 import { RISK_LABELS_VI } from '../utils/riskUtils.js';
+import {
+  getComputedFeaturesForStudent,
+  getLearningBehavior,
+} from '../services/learningBehaviorService.js';
+import { getBehaviorSummary } from '../services/behaviorFeatureService.js';
+import { featureDocToMl } from '../utils/featureColumns.js';
 
 async function assertClassAccess(user, classId) {
   const cls = await Class.findById(classId);
@@ -53,6 +59,20 @@ export const getStudent = asyncHandler(async (req, res) => {
   const history = await getPredictionHistory(student._id);
   const latestFeature = latestPrediction
     ? await StudentFeature.findById(latestPrediction.featureRecordId)
+    : await StudentFeature.findOne({ studentId: student._id }).sort({ recordedAt: -1 });
+
+  const learningBehavior = await getLearningBehavior(student._id);
+  let computedFeaturePreview = null;
+  try {
+    if (latestFeature) {
+      computedFeaturePreview = await getComputedFeaturesForStudent(student._id);
+    }
+  } catch {
+    computedFeaturePreview = null;
+  }
+
+  const existingForSummary = latestFeature
+    ? featureDocToMl(latestFeature.toObject())
     : null;
 
   res.json({
@@ -60,6 +80,9 @@ export const getStudent = asyncHandler(async (req, res) => {
     latestPrediction,
     predictionHistory: history,
     latestFeature,
+    learningBehavior,
+    behaviorSummary: getBehaviorSummary(learningBehavior, existingForSummary),
+    computedFeaturePreview,
   });
 });
 

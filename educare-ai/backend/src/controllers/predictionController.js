@@ -3,15 +3,25 @@ import { predictFromRawFeatures } from '../services/studentPredictionService.js'
 import Student from '../models/Student.js';
 import Class from '../models/Class.js';
 import Prediction from '../models/Prediction.js';
-import StudentFeature from '../models/StudentFeature.js';
-import { importStudentsAndPredict } from '../services/studentPredictionService.js';
+import { importStudentsAndPredict, repredictStudentWithBehavior } from '../services/studentPredictionService.js';
+import { formatRiskLevel } from '../utils/riskUtils.js';
 
 export const predictSingle = asyncHandler(async (req, res) => {
   const { studentId, features } = req.body;
   if (!studentId || !features) throw new AppError('studentId và features là bắt buộc');
 
   const prediction = await predictFromRawFeatures(studentId, features);
-  res.status(201).json({ message: 'Dự đoán thành công', prediction });
+  const risk = formatRiskLevel(prediction.riskLevel);
+  res.status(201).json({
+    message: 'Dự đoán thành công',
+    prediction,
+    predictedScore: prediction.predictedScore,
+    riskLevel: prediction.riskLevel,
+    riskLabelVi: risk.labelVi,
+    estimatedFinalGrade: prediction.estimatedFinalGrade,
+    computedFeatures: prediction.computedFeatures,
+    featureSource: prediction.featureSource,
+  });
 });
 
 export const predictBatch = asyncHandler(async (req, res) => {
@@ -23,6 +33,25 @@ export const predictBatch = asyncHandler(async (req, res) => {
     message: `Dự đoán batch thành công cho ${results.length} sinh viên`,
     count: results.length,
     predictions: results.map((r) => r.prediction),
+  });
+});
+
+export const repredictStudent = asyncHandler(async (req, res) => {
+  const result = await repredictStudentWithBehavior(req.params.studentId);
+  const risk = formatRiskLevel(result.prediction.riskLevel);
+
+  res.status(201).json({
+    success: true,
+    message: 'Dự đoán lại thành công',
+    predictedScore: result.prediction.predictedScore,
+    riskLevel: result.prediction.riskLevel,
+    riskLabelVi: risk.labelVi,
+    estimatedFinalGrade: result.prediction.estimatedFinalGrade,
+    riskFactors: result.prediction.riskFactors,
+    recommendedActions: result.prediction.recommendedActions,
+    computedFeatures: result.prediction.computedFeatures,
+    featureSource: result.prediction.featureSource,
+    prediction: result.prediction,
   });
 });
 
