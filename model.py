@@ -2,6 +2,7 @@ import os
 
 from matplotlib.pylab import uniform
 import pandas as pd
+import shap
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.pipeline import Pipeline
@@ -21,10 +22,7 @@ y = df['ExamScore']
 x_train, x_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-print(
-    df.groupby("FinalGrade")["ExamScore"]
-      .agg(["min", "max", "mean", "count"])
-)
+
 os.makedirs("boxplots", exist_ok=True)
 os.makedirs("barplots", exist_ok=True)
 
@@ -130,7 +128,22 @@ search = RandomizedSearchCV(
 
 search.fit(x_train, y_train)
 best_model = search.best_estimator_
+model = best_model.named_steps["model"]
 
+explainer = shap.TreeExplainer(model)
+
+sample = x_test.iloc[[0]]
+
+shap_values = explainer.shap_values(sample)
+
+shap.waterfall_plot(
+    shap.Explanation(
+        values=shap_values[0],
+        base_values=explainer.expected_value,
+        data=sample.iloc[0],
+        feature_names=sample.columns
+    )
+)
 dump(best_model, "student_examscore_model.joblib")
 y_pred = search.predict(x_test)
 mae = mean_absolute_error(y_test, y_pred)
