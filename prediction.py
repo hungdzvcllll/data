@@ -11,17 +11,11 @@ model = best_model.named_steps["model"]
 explainer = shap.TreeExplainer(model)
 df=pd.read_csv('student_performance.csv')
 df=df.drop(['FinalGrade','ExamScore'], axis=1)
-sample=df.iloc[[19]]  
+sample=df.iloc[[19]]  #thay dữ liêụ của ae vào đây
 shap_values = explainer.shap_values(sample)
+
 idx = np.argsort(shap_values[0])
 
-worst_features = idx[:3]
+worst_features = idx[:3] #3 thuộc tính tệ nhất ảnh hưởng điểm số
 print(worst_features)
-shap.waterfall_plot(
-    shap.Explanation(
-        values=shap_values[0],
-        base_values=explainer.expected_value,
-        data=sample.iloc[0],
-        feature_names=sample.columns
-    )
-)
+print(shap_values)
